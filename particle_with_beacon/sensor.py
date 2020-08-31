@@ -37,7 +37,7 @@ class CameraServo():
         return self.lastReading
 
     def getNoisyReading(self):
-        return np.random.multivariate_normal(self.lastReading, CameraCov * 0.5)
+        return np.random.multivariate_normal(self.lastReading, CameraCov)
 
     def getPoints(self):
         tf = matrix_utils.rotation2d(self.lastReading[1]) @ matrix_utils.scale2d(self.lastReading[0], 0)

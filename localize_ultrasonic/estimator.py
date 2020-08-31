@@ -101,7 +101,7 @@ class EKF():
         cov_truncated[2] = np.array([0, 0, 1])
         trans = matrix_utils.translation2d(self.est[0], self.est[1])
         rot = matrix_utils.rotation2d(self.est[2])
-        return trans @ cov_truncated @ rot @ shape.T
+        return (trans @ cov_truncated @ rot @ shape.T).T
 
 import scipy
 import scipy.linalg

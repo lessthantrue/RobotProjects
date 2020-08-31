@@ -20,7 +20,6 @@ se = state_estimator.EKF([0, 0, 0])
 width = 640
 height = 480
 dynamics_to_graphics_ratio = 40 # pixels/unit
-running = True
 cmd = (0, 0)
 clock = pygame.time.Clock()
 cam = sensor.CameraServo(10, rs.getFrame)
@@ -45,7 +44,6 @@ def on_js_loop():
     cmd = (fwd, turn)
 
 def on_key_event(event):
-    global running
     global cmd
     if event.type == pygame.KEYDOWN:
         if event.key == pygame.K_KP1:

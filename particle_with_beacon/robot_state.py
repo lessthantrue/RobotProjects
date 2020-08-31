@@ -20,7 +20,7 @@ class Robot():
             [0, 1, 0],
             [0, 0, 1]
         ])
-        self.color = (0, 0, 0)
+        self.color = (255, 0, 255)
         # self.processCov = np.zeros((3, 3))
     
     def getNoisyAct(self, v, w):

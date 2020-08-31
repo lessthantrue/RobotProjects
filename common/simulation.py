@@ -31,7 +31,7 @@ class Simulation():
         pygame.init()
         self.display_surf = pygame.display.set_mode((self.width, self.height), pygame.HWSURFACE | pygame.DOUBLEBUF)
 
-    def drawObjs(self, fill=(255, 255, 255)):
+    def drawObjs(self, fill=(0, 0, 0)):
         if fill != None:
             self.display_surf.fill(fill)
         
@@ -41,7 +41,7 @@ class Simulation():
             # transform dynamics to graphics and take only first 2 columns
             pts = (self.dynamics_to_graphics @ pts.T).T[:, :2]
             
-            pygame.draw.lines(self.display_surf, np.array(obj.color) * 0.8, False, pts, 2)
+            pygame.draw.lines(self.display_surf, np.array(obj.color), False, pts, 2)
 
         pygame.display.flip()
 

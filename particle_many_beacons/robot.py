@@ -1,12 +1,21 @@
 import numpy as np
 import pygame
 import motion
+from common import matrix_utils
+
+robot_shape = np.array([ 
+    [1, 0, 1], 
+    [-1, -0.5, 1], 
+    [-1, 0.5, 1],
+    [1, 0, 1]
+]) * np.array([0.25, 0.25, 1])
 
 class Robot():
     def __init__(self, startX, startY, startT):
         self.x = startX
         self.y = startY
         self.t = startT
+        self.color = (0, 0, 255)
 
     def act(self, v, w, dt):
         tNext = self.t + w * dt
@@ -24,28 +33,8 @@ class Robot():
     def getStateVector(self):
         return np.array([self.x, self.y, self.t])
     
-    def draw(self, surf, color, transform):
-        center = transform(self.x, self.y)
-        rot = np.array([
-            [np.cos(-self.t), -np.sin(-self.t)],
-            [np.sin(-self.t), np.cos(-self.t)]
-        ])
-        
-        rot = rot @ (np.identity(2) * 10)
+    def getFrame(self):
+        return matrix_utils.translation2d(self.x, self.y) @ matrix_utils.rotation2d(self.t)
 
-        shape = [ 
-            np.array([1, 0]), 
-            np.array([-1, -0.5]), 
-            np.array([-1, 0.5])
-        ]
-
-        for i in range(len(shape)):
-            shape[i] = rot @ shape[i]
-            shape[i] += center
-
-        pygame.draw.lines(
-            surf,
-            color,
-            True,
-            shape
-        )
+    def getPoints(self):
+        return matrix_utils.tfPoints(robot_shape, self.getFrame())

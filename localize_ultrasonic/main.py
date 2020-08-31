@@ -25,7 +25,7 @@ for r in robs:
     drawnObjs += [r] + r.getDrawnObjects()
     r.init_feedback()
 
-def makeSegments(points):
+def makeSegments(pts):
     segs = []
     for i in range(len(pts) - 1):
         if not np.array_equal(pts[i], pts[i+1]):

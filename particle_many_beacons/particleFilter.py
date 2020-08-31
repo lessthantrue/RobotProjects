@@ -1,16 +1,27 @@
 import numpy as np
 import pygame
 import motion
+import robot
+from common import matrix_utils
 
 class ParticleFilter():
     def __init__(self, nParticles, s0):
         self.particles = []
-        for i in range(0, nParticles):
+        self.objs = []
+        for _ in range(0, nParticles):
             self.particles.append(np.copy(s0))
+            self.objs.append(particleSprite(s0[0], s0[1], s0[2]))
+        self.color = (0, 255, 255)
+
+    def updateSprites(self):
+        for i in range(len(self.particles)):
+            st = self.particles[i]
+            self.objs[i].setState(st[0], st[1], st[2])
 
     def act(self, actV, dt):
         for i in range(len(self.particles)):
             self.particles[i] += motion.getInst().getNoisyDiff(actV[0], actV[1], dt, self.particles[i][2])
+        self.updateSprites()
 
     def sense(self, sensV, sensCov, world, camera, gyro, gyroStdev):
         weights = [0] * len(self.particles)
@@ -38,6 +49,7 @@ class ParticleFilter():
         assert len(newParticles) == len(self.particles)
 
         self.particles = newParticles
+        self.updateSprites()
 
     # P(z|x)
     def getProbSens(self, sensV, sensCov, state, world, camera, gyro, gyroStdev):
@@ -137,3 +149,27 @@ class ParticleFilter():
             True,
             shape
         )
+
+    def getFrame(self):
+        est = self.avg()
+        return matrix_utils.translation2d(est[0], est[1]) @ matrix_utils.rotation2d(est[2])
+
+    def getPoints(self):
+        return matrix_utils.tfPoints(robot.robot_shape, self.getFrame())
+
+    def getDrawnObjs(self):
+        return self.objs
+
+class particleSprite():
+    def __init__(self, x, y, t):
+        self.setState(x, y, t)
+        self.color = (255, 0, 0)
+
+    def setState(self, x, y, t):
+        trans = matrix_utils.translation2d(x, y)
+        rot = matrix_utils.rotation2d(t)
+        scl = matrix_utils.scale2d(0.7, 0.7)
+        self.points = matrix_utils.tfPoints(robot.robot_shape, trans @ rot @ scl)
+    
+    def getPoints(self):
+        return self.points

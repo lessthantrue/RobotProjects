@@ -1,23 +1,58 @@
 import numpy as np
 import pygame
+from common import matrix_utils
+
+cameraPtShape = np.array([
+    [-1, -1, 1],
+    [1, 1, 1],
+    [-1, 1, 1],
+    [1, -1, 1],
+    [-1, -1, 1]
+]) * np.array([0.25, 0.25, 1])
 
 class Camera():
-    def __init__(self, _range, fov):
+    def __init__(self, _range, fov, eframe, rframe, npts):
         self.range = _range # avoiding python keywords
         self.minrange = _range / 5
         self.fov = fov
         self.cov = np.array([
-            [0.2, 0.1],
-            [0.1, 10]
+            [0.2, 0],
+            [0, 10]
         ]) * 0.003
         self.fail_rate = 0.25
+        self.eframe = eframe
+        self.rframe = rframe
+
+        fovrad = np.deg2rad(self.fov)
+        self.shape = np.array([
+            [np.cos(fovrad / 2) * self.minrange, np.sin(fovrad / 2) * self.minrange, 1],
+            [self.minrange, 0, 1],
+            [np.cos(fovrad / 2) * self.minrange, -np.sin(fovrad / 2) * self.minrange, 1],
+            [np.cos(fovrad / 2) * self.range, -np.sin(fovrad / 2) * self.range, 1],
+            [self.range, 0, 1],
+            [np.cos(fovrad / 2) * self.range, np.sin(fovrad / 2) * self.range, 1],
+            [np.cos(fovrad / 2) * self.minrange, np.sin(fovrad / 2) * self.minrange, 1]
+
+        ])
+
+        self.color = (255, 0, 255)
+
+        self.objs = []
+        for _ in range(npts):
+            self.objs.append(CameraPoint())
 
     # gets all points in range of the sensor
     # in the form of distance and angle from
     # robot heading
-    def getPoints(self, world, posn, head):
+    def getSeenPoints(self, world, posn, head):
         fovrad = np.deg2rad(self.fov)
         toRet = []
+
+        for o in self.objs:
+            o.setOffscreen()
+
+        objIdx = 0
+
         for p in world.points:
             disp = p - posn
             th = np.arctan2(disp[1], disp[0])
@@ -31,6 +66,8 @@ class Camera():
             dist = np.linalg.norm(disp)
             if abs(thDelt) < fovrad / 2 and dist < self.range and dist > self.minrange and np.random.rand() > self.fail_rate:
                 toRet.append(np.random.multivariate_normal(np.array([thDelt, dist]), self.cov))
+                self.objs[objIdx].setLocation(dist, thDelt, self.eframe())
+                objIdx += 1
 
         return toRet
 
@@ -52,24 +89,25 @@ class Camera():
 
         return toRet
 
-    def draw(self, surf, color, transform, posn, head):
-        # posn = transform(posn[0], posn[1])
-        fovrad = np.deg2rad(self.fov)
-        shape = [
-            np.array([np.cos(head - fovrad / 2) * self.minrange, np.sin(head - fovrad / 2) * self.minrange]),
-            np.array([np.cos(head) * self.minrange, np.sin(head) * self.minrange]),
-            np.array([np.cos(head + fovrad / 2) * self.minrange, np.sin(head + fovrad / 2) * self.minrange]),
-            np.array([np.cos(head + fovrad / 2) * self.range, np.sin(head + fovrad / 2) * self.range]),
-            np.array([np.cos(head) * self.range, np.sin(head) * self.range]),
-            np.array([np.cos(head - fovrad / 2) * self.range, np.sin(head - fovrad / 2) * self.range])
-        ]
+    def getPoints(self):
+        return matrix_utils.tfPoints(self.shape, self.rframe())
 
-        for i in range(len(shape)):
-            shape[i] = transform(shape[i][0] + posn[0], shape[i][1] + posn[1])
+    def getDrawnObjs(self):
+        return self.objs
 
-        pygame.draw.lines(
-            surf,
-            color,
-            True,
-            shape
-        )
+class CameraPoint():
+    def __init__(self):
+        self.setOffscreen()
+        self.color = (0, 0, 255)
+
+    def setLocation(self, d, th, cFrame):
+        trans = matrix_utils.translation2d(d, 0)
+        rot = matrix_utils.rotation2d(th)
+        self.points = matrix_utils.tfPoints(cameraPtShape, cFrame @ rot @ trans)
+
+    def setOffscreen(self):
+        trans = matrix_utils.translation2d(30, 30)
+        self.points = matrix_utils.tfPoints(cameraPtShape, trans)
+
+    def getPoints(self):
+        return self.points
