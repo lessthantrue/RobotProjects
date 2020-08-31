@@ -28,7 +28,7 @@ class Robot():
         dy = v * math.sin(self.t)
         dt = w
         actVector = np.array([dx, dy, dt])
-        return np.random.multivariate_normal(actVector, self.processCov)
+        return np.random.multivariate_normal(actVector, self.processCov * np.linalg.norm(actVector))
 
     def act(self, v, w, dt):
         self.x += v * math.cos(self.t) * dt
@@ -44,6 +44,8 @@ class Robot():
     def getStateVector(self):
         return np.array(self.x, self.y, self.t)
 
+    def getFrame(self):
+        return matrix_utils.translation2d(self.x, self.y) @ matrix_utils.rotation2d(self.t)
+
     def getPoints(self):
-        tf = matrix_utils.translation2d(self.x, self.y) @ matrix_utils.rotation2d(self.t)
-        return matrix_utils.tfPoints(shape, tf)
+        return matrix_utils.tfPoints(shape, self.getFrame())

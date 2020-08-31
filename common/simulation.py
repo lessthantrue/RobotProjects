@@ -41,7 +41,7 @@ class Simulation():
             # transform dynamics to graphics and take only first 2 columns
             pts = (self.dynamics_to_graphics @ pts.T).T[:, :2]
             
-            pygame.draw.lines(self.display_surf, np.array(obj.color) * 0.8, False, pts)
+            pygame.draw.lines(self.display_surf, np.array(obj.color) * 0.8, False, pts, 2)
 
         pygame.display.flip()
 

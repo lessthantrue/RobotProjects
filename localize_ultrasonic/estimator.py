@@ -2,6 +2,19 @@ import numpy as np
 from common import matrix_utils
 import motion
 
+shape = np.array([
+    [0.5, 0, 1],
+    [0, 0.5, 1],
+    [-0.5, 0, 1],
+    [0, -0.5, 1],
+    [0.5, 0, 1],
+    [1, 0, 1],
+    [0, 1, 1],
+    [-1, 0, 1],
+    [0, -1, 1],
+    [1, 0, 1]
+])
+
 def jacobian_sense(sa, ma):
     if type(sa) == type(None):
         return np.array([0, 0, 0])
@@ -84,25 +97,11 @@ class EKF():
         return np.diag(L)
 
     def getPoints(self):
-        shape = np.array([
-            [0.5, 0, 1],
-            [0, 0.5, 1],
-            [-0.5, 0, 1],
-            [0, -0.5, 1],
-            [0.5, 0, 1],
-            [1, 0, 1],
-            [0, 1, 1],
-            [-1, 0, 1],
-            [0, -1, 1],
-            [1, 0, 1]
-        ])
-
         cov_truncated = np.copy(self.P)
         cov_truncated[2] = np.array([0, 0, 1])
         trans = matrix_utils.translation2d(self.est[0], self.est[1])
         rot = matrix_utils.rotation2d(self.est[2])
-        shape = trans @ cov_truncated @ rot @ shape.T
-        return shape.T
+        return trans @ cov_truncated @ rot @ shape.T
 
 import scipy
 import scipy.linalg
