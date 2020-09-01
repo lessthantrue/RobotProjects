@@ -43,10 +43,7 @@ class Interpreter():
                 arc_center_ijk = dict((l, 0.) for l in "IJK")
                 arc_center_ijk.update(b.get_param_dict("IJK"))
                 arc_center_coords = dict(({"I":"x", "J":"y", "K":"z"}[k], v) for (k, v) in arc_center_ijk.items())
-                # print(arc_center_coords)
                 # incremental position
-                # problem is here: xc and yc are only offset by position if machine is in incremental mode
-                # also needs to be offset from tool at start of instruction, not where the machine is afterwards.
                 xc = arc_center_coords['x'] + xb
                 yc = arc_center_coords['y'] + yb
                 self.planner.G2(self.mac.pos.vector[0], self.mac.pos.vector[1], xc ,yc, self.fr)

@@ -27,8 +27,6 @@ def derivative(state, u):
     dState[3] = (1/D)*((m+M)*m*g*L*Sy - m*L*Cy*(m*L*(y(4)**2)*Sy - d*y(2))) - m*L*Cy*(1/D)*u + .01*np.random.rand()
     return dState
 
-    
-
 def linearize(state):
     if state[2] < math.pi / 2 and state[2] > -math.pi / 2:
         # pendulum facing down

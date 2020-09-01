@@ -66,4 +66,3 @@ class Simulation():
                 renderfn()
 
         pygame.quit()
-
