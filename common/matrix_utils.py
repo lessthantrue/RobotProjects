@@ -46,3 +46,9 @@ def translation2dh(dx, dy, dth=0):
 
 def tfPoints(points, frame):
     return (frame @ points.T).T
+
+def toAffine(v):
+    return np.array([v[0], v[1], 1])
+
+def fromAffine(v):
+    return np.array([v[0], v[1]])

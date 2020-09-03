@@ -16,7 +16,7 @@ class World():
         self.walls.append(self.make_wall(vlen, buf, vspan, buf, buf))
         self.walls.append(self.make_wall(hlen, buf, hspan, buf, buf))
 
-        self.color = (0, 0, 0)
+        self.color = (255, 255, 255)
 
     def make_wall(self, count, minVal, maxVal, startVal, endVal):
         toRet = []

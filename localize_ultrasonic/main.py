@@ -10,7 +10,7 @@ width = 1280
 height = 960
 
 # simulation state setup
-nrobs = 3
+nrobs = 1
 robs = []
 for i in range(nrobs):
     robs.append(robot.Robot(np.array([i, i, i])))

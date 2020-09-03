@@ -70,14 +70,6 @@ class Ultrasonic():
         return self.parentFrame() @ self.frame
 
     def getPoints(self):
-
-        scl = matrix_utils.scale2d(0.2, 0.2)
-
-        points = []
-        for p in shape:
-            pnew = self.parentFrame() @ self.frame @ scl @ p
-            points.append(pnew[0:2])
-
         return matrix_utils.tfPoints(shape, self.getFrame())
 
     # returns :
@@ -103,15 +95,17 @@ class Ultrasonic():
 
         if minRay != None:
             minRay.color = (0, 255, 0)
-            minRay = minRay.getPoints()
+            minRay = minRay.getIntPoints(sFrame)
+            minRay[0] = matrix_utils.toAffine(minRay[0])
+            minRay[1] = matrix_utils.toAffine(minRay[1])
         else:
-            minD = 7.5
+            minD = 15
 
         return (minPt, minSeg, minRay, minD)
 
     def addSensorNoise(self, minD):
         if np.random.rand() > 0.7 or minD < 0.5:
-            return 7.5
+            return 15
         else:
             return np.random.triangular(minD * 4 / 5, minD, minD * 6 / 5)
 
