@@ -19,6 +19,16 @@ shape = np.array([
     [1, 0, 1]
 ])
 
+ctv = 0.5 / np.cos(np.pi / 6)
+ctm = ctv *  np.sin(np.pi / 6)
+robShape = np.array([
+    [ctv, 0, 1],
+    [-ctm, 0.5, 1],
+    [-ctm, -0.5, 1],
+    [ctv, 0, 1],
+    [0, 0, 1]
+])
+
 def jacobian_sense(sa, ma):
     if type(sa) == type(None):
         return np.array([0, 0, 0])
@@ -61,17 +71,17 @@ def seg_intersect(a1,a2, b1,b2) :
     return (num / denom.astype(float))*db + b1
 
 class EKF():
-    def __init__(self, x0, uf1, uf2, uf3):
+    def __init__(self, x0, stdevs):
         self.est = np.copy(x0)
-        self.uframes = [uf1, uf2, uf3]
         self.P = np.identity(len(x0)) * 1
         self.Q = np.array([
             [1, 0, 0],
             [0, 1, 0],
             [0, 0, 0.3]
         ]) * 0.3
-        self.R = np.identity(3)
+        self.R = np.diag(stdevs) ** 2
         self.color = (255, 0, 0)
+        self.drawnObjs = []
 
     # A = ID; B = ID * dt
     def act(self, actV, dt):
@@ -82,18 +92,20 @@ class EKF():
         return motion.getFrame(self.est)
 
     def sense(self, sensV, sensVhat, sa, ma):
-        H = np.array([
-            jacobian_sense(sa[0], ma[0]),
-            jacobian_sense(sa[1], ma[1]),
-            jacobian_sense(sa[2], ma[2])
-        ])
+        H = []
+        for i in range(len(sa)):
+            H.append(jacobian_sense(sa[i], ma[i]))
+
+        H = np.array(H)
+
         L = self.jumpFilter(sensV, sensVhat)
-        K = self.P @ H.T @ np.linalg.inv(H @ self.P @ H.T + self.R) @ L
+        S = H @ self.P @ H.T + self.R
+        K = self.P @ H.T @ np.linalg.inv(S) @ L
         self.est += K @ (sensV - sensVhat)
         self.P = (np.identity(len(self.est)) - K @ H) @ self.P
 
     def jumpFilter(self, sensV, sensVhat):
-        eps = 0.3
+        eps = 0.1 * np.linalg.det(self.P)
         L = np.zeros(len(sensV))
         for i in range(len(sensV)):
             if abs(sensV[i] - sensVhat[i]) < eps:
@@ -110,6 +122,18 @@ class EKF():
 import scipy
 import scipy.linalg
 
+
+class sigmaPointSprite():
+    def __init__(self, s0):
+        self.setPosition(s0)
+        self.color = (128, 0, 0)
+
+    def setPosition(self, pose):
+        self.frame = matrix_utils.translation2d(pose[0], pose[1]) @ matrix_utils.rotation2d(pose[2])
+
+    def getPoints(self):
+        return matrix_utils.tfPoints(robShape, self.frame)
+
 k = 0
 alph = 0.6
 L = 3 # dimensions
@@ -117,9 +141,8 @@ lam = alph * alph * L - L
 beta = 2
 w0 = 0.4
 class UKF():
-    def __init__(self, x0, uf1, uf2, uf3):
+    def __init__(self, x0):
         self.est = np.copy(x0)
-        self.uframes = [uf1, uf2, uf3]
         self.P = np.identity(len(x0), dtype='float64')
 
         self.Q = np.array([
@@ -129,13 +152,21 @@ class UKF():
         ])
 
         self.R = np.identity(3) * 3
-
         self.wCalc = self.weights()
+
+        self.drawnObjs = []
+        for _ in self.wCalc[0]:
+            self.drawnObjs.append(sigmaPointSprite([0, 0, 0]))
 
         self.color = (255, 0, 0)
 
     def getFrame(self):
         return motion.getFrame(self.est)
+
+    def resetSigmaSprites(self):
+        X = self.sigmas()
+        for i in range(len(X)):
+            self.drawnObjs[i].setPosition(X[i])
 
     def sigmas(self):
         sqrtp = np.linalg.cholesky(self.P) * np.sqrt(L / (1 - w0))
@@ -181,7 +212,7 @@ class UKF():
                 ma1 = matrix_utils.toAffine(ma[0])
                 ma2 = matrix_utils.toAffine(ma[1])
 
-                # get intersection point with new segment
+                # get intersection point with transformed segment
                 intersect = seg_intersect(sat1, sat2, ma1, ma2)
 
                 if type(intersect) == type(None):
@@ -192,40 +223,43 @@ class UKF():
         return np.array(ys)
 
     def act(self, actV, dt):
-        actV = matrix_utils.rotation2d(self.est[2]) @ actV
         X = np.array(list(map(lambda x: motion.move_robot(x, actV, dt), self.sigmas())))
         Wm, Wc = self.wCalc
         self.est = np.average(X, weights=Wm, axis=0)
-        self.P = np.cov(X.T, aweights=Wc, ddof=0) + self.Q * np.linalg.norm(actV) * dt
+
+        P = np.zeros((3, 3))
+        for i in range(len(X)):
+            Xe = X[i] - self.est
+            P += Wc[i] * np.outer(Xe, Xe)
+
+        self.P = P + self.Q * np.linalg.norm(actV) * dt
+        self.resetSigmaSprites()
 
     def sense(self, sensV, sensVhat, sa, ma):
         X = self.sigmas()
 
         # get expected sensor readings from sigma points
         ys = self.getYs(sa, ma, X)
+        print(ys)
 
         Wm, Wc = self.wCalc
 
         ys_avg = np.average(ys, weights=Wm, axis=0)
-        S = np.cov(ys.T, aweights=Wc, ddof=0) + self.R
 
         # compute cross covariance
         C = np.zeros((3, 3))
         S = np.copy(self.R)
         for i in range(len(X)):
-            C += Wc[i] * (X[i] - self.est) @ (ys[i] - ys_avg).T
-            S += Wc[i] * (ys[i] - ys_avg) @ (ys[i] - ys_avg).T
+            ys_res = ys[i] - ys_avg
+            C += Wc[i] * np.outer(X[i] - self.est, ys_res)
+            S += Wc[i] * np.outer(ys_res, ys_res)
 
         # rest of kalman filter
         K = C @ np.linalg.inv(S)
 
         self.est += K @ (sensV - ys_avg)
         self.P -= K @ S @ K.T
-        print("sensed")
-        print(self.P)
-        print(S)
-        print(K)
-        print(ys)
+        self.resetSigmaSprites()
 
     def getPoints(self):
         cov_truncated = np.copy(self.P)

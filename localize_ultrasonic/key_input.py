@@ -44,4 +44,4 @@ class KeyInput():
         for k in self.keysDown:
             if k in actions:
                 dirsum += np.array(actions[k], dtype="float64") / len(self.keysDown)
-        return dirsum
+        return dirsum * 0.5

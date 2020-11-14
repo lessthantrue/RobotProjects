@@ -6,24 +6,25 @@ from common.matrix_utils import *
 reg_kp = np.array([1, 1, 0.8])
 reg_kf = np.array([0.0, 0.0, 0.0])
 
+ctv = 0.5 / np.cos(np.pi / 6)
+ctm = ctv *  np.sin(np.pi / 6)
+shape = np.array([
+    [ctv, 0, 1],
+    [-ctm, 0.5, 1],
+    [-ctm, -0.5, 1],
+    [ctv, 0, 1],
+    [0, 0, 1]
+])
+
 class Robot():
     def __init__(self, startV):
         self.state = np.array(startV, dtype="float64")
         self.color = (255, 0, 255)
-        self.us1 = sensor.Ultrasonic(rotation2d(np.pi / 3) @ translation2d(0.3, 0), self)
-        self.us2 = sensor.Ultrasonic(rotation2d(np.pi) @ translation2d(0.3, 0), self)
-        self.us3 = sensor.Ultrasonic(rotation2d(np.pi * 5 / 3) @ translation2d(0.3, 0), self)
-        self.ekf = estimator.EKF(self.state, self.us1.frame, self.us2.frame, self.us3.frame)
-
-        ctv = 0.5 / np.cos(np.pi / 6)
-        ctm = ctv *  np.sin(np.pi / 6)
-        self.shape = np.array([
-            [ctv, 0, 1],
-            [-ctm, 0.5, 1],
-            [-ctm, -0.5, 1],
-            [ctv, 0, 1],
-            [0, 0, 1]
-        ])
+        us1 = sensor.Ultrasonic(rotation2d(np.pi / 3) @ translation2d(0.3, 0), self)
+        us2 = sensor.Ultrasonic(rotation2d(np.pi) @ translation2d(0.3, 0), self)
+        us3 = sensor.Ultrasonic(rotation2d(np.pi * 5 / 3) @ translation2d(0.3, 0), self)
+        self.sensors = [us1,  us3]
+        self.ekf = estimator.EKF(self.state, [us1.stdev, us2.stdev])
 
     def init_feedback(self):
         self.ctrl = regulator.Regulator(reg_kp, reg_kf)
@@ -43,6 +44,7 @@ class Robot():
 
     def act(self, act, dt):
         self.state = motion.move_robot(self.state, act, dt)
+        return act
 
     def autoAct(self, ff, dt):
         fb = self.ctrl.get(self.ekf.est)
@@ -53,16 +55,21 @@ class Robot():
         return act
 
     def getDrawnObjects(self):
-        return [self.us1, self.us2, self.us3, self.ekf] + self.us1.rays + self.us2.rays + self.us3.rays
+        objs = []
+        for s in self.sensors:
+            objs += [s] + s.drawnObjs
+
+        objs += [self.ekf] + self.ekf.drawnObjs
+        return objs
 
     def getPoints(self):
-        return tfPoints(self.shape, self.getFrame())
+        return tfPoints(shape, self.getFrame())
 
     def getEstPts(self):
         tf = self.ekf.getFrame()
         points = []
-        for i in range(len(self.shape)):
-            points.append(np.array(tf @ self.shape[i])[0:2])
+        for i in range(len(shape)):
+            points.append(np.array(tf @ shape[i])[0:2])
 
         return points
 
@@ -85,13 +92,14 @@ class Robot():
 
     def stepEkf(self, act, segs, rsegs, esegs, dt):
         self.ekf.act(act, dt / 1000.0)
-        if np.linalg.norm(act) > 0.01 and np.random.rand() < 0.1:
+        if np.linalg.norm(act) > 0.01 and np.random.rand() < 0.5:
             ekfFrame = self.ekf.getFrame()
             robFrame = self.getFrame()
             sas, mas, dSens, dEst = [], [], [], []
-            for us in [self.us1, self.us2, self.us3]:
+            for us in self.sensors:
                 (_, as1, ar1, de1) = us.getModelOutput(segs + esegs, ekfFrame)                
                 (_, _, _, ds1) = us.getModelOutput(segs + rsegs, robFrame)
+                ds1 = us.addSensorNoise(ds1)
                 sas.append(ar1)
                 mas.append(as1)
                 dEst.append(de1)

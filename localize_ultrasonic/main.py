@@ -10,7 +10,7 @@ width = 1280
 height = 960
 
 # simulation state setup
-nrobs = 1
+nrobs = 4
 robs = []
 for i in range(nrobs):
     robs.append(robot.Robot(np.array([i, i, i])))
@@ -54,10 +54,13 @@ def on_loop(dt):
     acts = ctrl.getFF(act)
     for i in range(len(robs)):
         r = robs[i]
+        acted = np.zeros(3)
         for _ in range(0, dt):
-            acted = r.autoAct(acts[i], 0.001)
+            acted += r.autoAct(acts[i], 0.001)
+            # acted += r.act(act, 0.001)
 
-        r.stepEkf(acted, wsegs, rsegs, esegs, dt)
+
+        r.stepEkf(acted / dt, wsegs, rsegs, esegs, dt)
 
 sim = simulation.Simulation(width, height)
 sim.initGame()

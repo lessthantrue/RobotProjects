@@ -33,7 +33,6 @@ def pt_in(p, pa, pb):
         p[1] >= min(pa[1], pb[1]) and
         p[1] <= max(pa[1], pb[1]))
 
-
 shape = np.array([
     [-0.5, 0, 1],
     [0.5, 0.577, 1],
@@ -65,6 +64,9 @@ class Ultrasonic():
         self.rays = []
         for rp in rayParams:
             self.rays.append(UltrasonicRay(rp[0], rp[1], self.getFrame))
+        self.drawnObjs = self.rays
+
+        self.stdev = 0.1
 
     def getFrame(self):
         return self.parentFrame() @ self.frame
@@ -84,7 +86,7 @@ class Ultrasonic():
         minPt = None
         minSeg = None
         minRay = None
-        minD = 1000000000000
+        minD = 15
         for p, s, d, r in pts:
             r.color = (0, 255, 255)
             if (type(p) != type(None)) and d < minD:
@@ -98,13 +100,11 @@ class Ultrasonic():
             minRay = minRay.getIntPoints(sFrame)
             minRay[0] = matrix_utils.toAffine(minRay[0])
             minRay[1] = matrix_utils.toAffine(minRay[1])
-        else:
-            minD = 15
 
         return (minPt, minSeg, minRay, minD)
 
     def addSensorNoise(self, minD):
-        if np.random.rand() > 0.7 or minD < 0.5:
+        if np.random.rand() > 0.8 or minD < 0.5:
             return 15
         else:
             return np.random.triangular(minD * 4 / 5, minD, minD * 6 / 5)
@@ -157,8 +157,7 @@ class UltrasonicRay():
             d = np.linalg.norm(raypts[0] - p)
             if (pt_in(p, wpa, wpb) and 
                 pt_in(p, raypts[0], raypts[1]) and 
-                d < minD and d > minRange and
-                np.random.rand() > 0.2):
+                d < minD and d > minRange):
                 minD = d
                 minP = p
                 minSeg = wpa, wpb

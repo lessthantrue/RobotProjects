@@ -68,12 +68,13 @@ class App:
             (cartPosnXg, cartPosnYg),
             (ballPosnXg, ballPosnYg),
             3
-        
+        )
+
         pygame.draw.circle(
             self._display_surf,
             STUFF,
             (ballPosnXg, ballPosnYg),
-            int(5)
+            5
         )
         pygame.display.flip()
 
