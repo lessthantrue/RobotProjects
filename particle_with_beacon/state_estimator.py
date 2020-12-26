@@ -40,7 +40,7 @@ class EKF:
             [0, 0, 1]
         ])
 
-        # h(xhat)
+        # zhat = h(xhat)
         H = np.array([
             math.sqrt(dTotal),
             math.pi - self.mu[2] + math.atan2(dy, dx),
