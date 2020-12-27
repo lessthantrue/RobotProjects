@@ -1,6 +1,9 @@
 import numpy as np
 import pygame
-import common.matrix_utils as mu
+try:
+    import matrix_utils as mu
+except ModuleNotFoundError:
+    from common import matrix_utils as mu
 
 class Simulation():
     def __init__(self, width, height, graphics_ratio=40):
